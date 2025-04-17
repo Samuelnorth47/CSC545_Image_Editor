@@ -1,6 +1,6 @@
 # CSC545_Image_Editor
 
-Sam - Drawing Feature, Change Color of Drawing Feature
+Sam - Drawing Feature, Change Ink Color Feature
 
 
 
