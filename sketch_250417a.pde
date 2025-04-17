@@ -2,18 +2,32 @@ PImage img;           // Original image
 PImage editedImg;     // Image being edited
 PImage originalImg;   // Backup of the original image
 boolean cropping = false;
+PGraphics drawingLayer;
+boolean isDrawing = false;
+float prevX, prevY;
 int cropX, cropY, cropW, cropH;
 float scaleFactor = 1.0; // Initial scale factor
 final float minScaleFactor = 0.1;
 final float maxScaleFactor = 5.0;
+String filename = "test.jpg";
+color currentStrokeColor = color(0); // Default to black
+int currentStrokeWeight = 2; 
 
 void setup() {
   size(800, 600);
-  img = loadImage("test.jpg"); // Replace with your image file
+  img = loadImage(filename); // Replace with your image file
+  if (img == null) {
+    println("Error: Image 'test.jpg' not found.");
+    exit();
+  }
   scaleFactor = max((float)width / img.width, (float)height / img.height);
   editedImg = img.copy();
   originalImg = img.copy(); // Backup of the original image
   imageMode(CORNER);
+  drawingLayer = createGraphics(width, height);
+  drawingLayer.beginDraw();
+  drawingLayer.clear(); // Ensure the drawing layer is transparent
+  drawingLayer.endDraw();
   println("Controls:");
   println("1: Start Crop");
   println("2: Reset Scale");
@@ -22,10 +36,17 @@ void setup() {
   println("5: Flip Vertically");
   println("6: Scale Up");
   println("7: Scale Down");
-  println("r: Revert to Original Image");
+  println("8: Draw Mode");
+  println("9: Clear Drawing");
+  println("r: Red");
+  println("b: Blue");
+  println("g: Green");
+  println("l: Black");
+  println("+: Increase Stroke Weight");
+  println("-: Decrease Stroke Weight");
+  println("d: Revert to Original Image");
   println("s: Save Edited Image");
 }
-
 
 void draw() {
   background(255);
@@ -38,6 +59,16 @@ void draw() {
 
   imageMode(CORNER);
   image(editedImg, offsetX, offsetY, newWidth, newHeight);
+  image(drawingLayer, 0, 0); // Overlay the drawing layer
+  if (isDrawing && mousePressed) {
+    drawingLayer.beginDraw();
+    drawingLayer.stroke(currentStrokeColor); // Set drawing color
+    drawingLayer.strokeWeight(currentStrokeWeight); // Set stroke weight
+    drawingLayer.line(prevX, prevY, mouseX, mouseY); // Draw line
+    drawingLayer.endDraw();
+  }
+  prevX = mouseX;
+  prevY = mouseY;
 
   if (cropping) {
     noFill();
@@ -70,15 +101,42 @@ void keyPressed() {
   } else if (key == '7') {
     // Scale Down
     scaleFactor = max(scaleFactor * 0.9, minScaleFactor);
-  } else if (key == 'r' || key == 'R') {
+  } else if (key == '8') {
+    isDrawing = !isDrawing; // Toggle drawing mode
+  } else if (key == '9') {
+    drawingLayer.beginDraw();
+    drawingLayer.clear(); // Clear the drawing layer
+    drawingLayer.endDraw();
+  } else if (key == 'd' || key == 'D') {
     // Revert to Original Image
     editedImg = originalImg.copy();
     scaleFactor = 1.0;
+  }else if (key == 'r' || key == 'R') {
+    currentStrokeColor = color(255, 0, 0); // Red
+  } else if (key == 'g' || key == 'G') {
+    currentStrokeColor = color(0, 255, 0); // Green
+  } else if (key == 'b' || key == 'B') {
+    currentStrokeColor = color(0, 0, 255); // Blue
+  } else if (key == '+') {
+    currentStrokeWeight += 2 ; // Red
+  } else if (key == '-')  {
+      if (currentStrokeWeight >= 3){
+    currentStrokeWeight -= 2; // Green
+      }
+  }else if (key == 'l' || key == 'L') {
+    currentStrokeColor = color(0); // Black
   } else if (key == 's' || key == 'S') {
-    // Save Edited Image
-    editedImg.save("edited_image.jpg");
-    println("Image saved as edited_image.jpg");
-  }
+  // Create a new graphics context to combine the edited image and the drawing layer
+  PGraphics combined = createGraphics(editedImg.width, editedImg.height);
+  combined.beginDraw();
+  combined.image(editedImg, 0, 0);
+  combined.image(drawingLayer, 0, 0);
+  combined.endDraw();
+  
+  // Save the combined image
+  combined.save("edited_image.jpg");
+  println("Image saved as edited_image.jpg");
+}
 }
 
 void mouseReleased() {
