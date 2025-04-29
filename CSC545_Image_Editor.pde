@@ -3,6 +3,7 @@ PImage editedImg;     // Image being edited
 PImage originalImg;   // Backup of the original image
 boolean cropping = false;
 PGraphics drawingLayer;
+
 boolean isDrawing = false;
 float prevX, prevY;
 int cropX, cropY, cropW, cropH;
