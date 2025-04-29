@@ -48,6 +48,8 @@ void setup() {
   println("s: Save Edited Image");
   println("w: Change the Image to Grayscale");
   println("c: Reset the image");
+  println("H: Stretches images Histogram");
+  println("E: Equalizes images Histogram");
 }
 
 void draw() {
@@ -151,6 +153,12 @@ void keyPressed() {
     editedImg = originalImg;
     windowResize(editedImg.width, editedImg.height);
   }
+   if (key == 'H')  {
+    editedImg = histStretch(img);
+    windowResize(editedImg.width, editedImg.height); 
+  } else if (key == 'E') {
+      editedImg = histEqual(img);
+  }  
 }
 
 void mouseReleased() {
@@ -231,4 +239,150 @@ PImage convertToColor(PImage img) {
   }
   
   return colorImg;
+}
+
+//Define arrays for red, green, and blue counts
+int[] rCounts = new int[256];  //bins for red histogram
+int[] gCounts = new int[256];  //bins for green histogram
+int[] bCounts = new int[256];  //bins for blue histogram
+
+void calcHists(PImage src){
+ //this is code taught in class
+  for(int i =0; i<rCounts.length; i++){
+    rCounts[i] = 0;
+    gCounts[i] = 0;
+    bCounts[i] = 0;
+  }
+  
+  for(int y=0; y<src.height; y++){
+      for(int x=0; x<src.width; x++){
+        color c = src.get(x,y);
+        int r = int(red(c)), g = int(green(c)), b = int(blue(c));
+        rCounts[r]+=1;
+        gCounts[g]+=1;
+        bCounts[b]+=1;
+      }
+    }
+}
+
+PImage histStretch( PImage src){
+  calcHists(src);
+  // initializing variables
+  PImage target = createImage(src.width, src.height, RGB);
+  target.loadPixels();
+  float rmin = 0, gmin = 0, bmin = 0, rmax =0, gmax = 0, bmax =0;
+  float rscale = 0, gscale = 0, bscale = 0;
+ // finding minimum color values
+  for(int i = 0; i<rCounts.length; i++){
+    if (rCounts[i] >0){
+       rmin = i;
+       break;
+    }
+  }
+  for(int i = 0; i<gCounts.length; i++){
+    if (gCounts[i] >0){
+       gmin = i;
+       break;
+    }
+  }
+  for(int i = 0; i<bCounts.length; i++){
+    if (bCounts[i] >0){
+       bmin = i;
+       break;
+    }
+  }
+ 
+ /*
+ now same process for highest bin
+*/
+ for(int i =rCounts.length-1;i>=0; i--){
+   if(rCounts[i] >0){
+     rmax = i;
+     break;
+   }
+ }
+ for(int i =gCounts.length-1;i>=0; i--){
+   if(gCounts[i] >0){
+     gmax = i;
+     break;
+   }
+ }
+ for(int i =bCounts.length-1;i>=0; i--){
+   if(bCounts[i] >0){
+     bmax = i;
+     break;
+   }
+ }
+ // finding ratio between max color value possible and max values actually found.
+ if (rmax>rmin) {rscale = 255/(rmax-rmin);}
+ else rscale = 1;
+ if (gmax>gmin) {gscale = 255/(gmax-gmin);}
+ else gscale = 1;
+ if (bmax>bmin) {bscale = 255/(bmax-bmin);}
+ else bscale = 1;
+ // multiplying colors by previous ratio
+ for (int y = 0; y < src.height; y++) {
+    for (int x = 0; x < src.width; x++) {
+      color c = src.get(x, y);
+      int r = constrain((int)((red(c)-rmin) * rscale), 0, 255);
+      int g = constrain((int)((green(c)-gmin) * gscale), 0, 255);
+      int b = constrain((int)((blue(c)-bmin) * bscale), 0, 255);
+      target.pixels[y* src.width + x] = color(r,g,b);
+    }
+  }
+  target.updatePixels();
+  return target;
+}
+
+PImage histEqual(PImage src) {
+  calcHists(src); // calculates the histogram of source
+  PImage target = createImage(src.width, src.height, RGB);
+  target.loadPixels();
+  //arrays to hold cumulative values 
+  int[] rCumul = new int[256];
+  int[] gCumul = new int[256];
+  int[] bCumul = new int[256];
+  
+  //initialize to start off with correct value
+  rCumul[0] = rCounts[0];
+  gCumul[0] = gCounts[0];
+  bCumul[0] = bCounts[0];
+  //add running cumulative totals into our cumul arrays.
+  for (int i = 1; i < 256; i++) {
+    rCumul[i] = rCumul[i - 1] + rCounts[i];
+    gCumul[i] = gCumul[i - 1] + gCounts[i];
+    bCumul[i] = bCumul[i - 1] + bCounts[i];
+  }
+  //total pixels in provided image
+  int pixls = src.width * src.height;
+  
+  //arrays to hold appropriate color value densities
+  int[] rDens = new int[256];
+  int[] gDens = new int[256];
+  int[] bDens = new int[256];
+  
+  // manipulating value densities with color scale and image size
+  for (int i = 0; i < 256; i++) {
+    rDens[i] = (rCumul[i] * 255) / pixls;
+    gDens[i] = (gCumul[i] * 255) / pixls;
+    bDens[i] = (bCumul[i] * 255) / pixls;
+  }
+ // replacing color values with appropriate colors after manipulating the Dens[]'s
+  for (int y = 0; y < src.height; y++) {
+    for (int x = 0; x < src.width; x++) {
+      color c = src.get(x, y);
+      
+      int r1 = rDens[(int)red(c)];
+      int g1 = gDens[(int)green(c)];
+      int b1 = bDens[(int)blue(c)];
+      
+      r1 = constrain(r1, 0, 255);
+      g1 = constrain(g1, 0, 255);
+      b1 = constrain(b1, 0, 255);
+     
+       target.pixels[y* src.width + x] = color(r1,g1,b1);
+    }
+  }
+  target.updatePixels();
+  return target;
 }
