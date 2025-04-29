@@ -5,6 +5,7 @@ boolean cropping = false;
 PGraphics drawingLayer;
 boolean isDrawing = false;
 float prevX, prevY;
+
 int cropX, cropY, cropW, cropH;
 float scaleFactor = 1.0; // Initial scale factor
 final float minScaleFactor = 0.1;
