@@ -12,6 +12,12 @@ final float maxScaleFactor = 5.0;
 String filename = "test.jpg";
 color currentStrokeColor = color(0); // Default to black
 int currentStrokeWeight = 2; 
+boolean showHists = false;
+//Define arrays for red, green, and blue counts
+int[] rCounts = new int[256];  //bins for red histogram
+int[] gCounts = new int[256];  //bins for green histogram
+int[] bCounts = new int[256];  //bins for blue histogram
+int posR = 10, posG = 275, posB = 541; //Left edges of the color histograms in the canvas
 
 void setup() {
   size(800, 600);
@@ -47,9 +53,9 @@ void setup() {
   println("d: Revert to Original Image");
   println("s: Save Edited Image");
   println("w: Change the Image to Grayscale");
-  println("c: Reset the image");
-  println("H: Stretches images Histogram");
-  println("E: Equalizes images Histogram");
+  println("h: Stretches images Histogram");
+  println("e: Equalizes images Histogram");
+  println("f: Display Histogram");
 }
 
 void draw() {
@@ -81,6 +87,10 @@ void draw() {
     stroke(255, 0, 0);
     rect(cropX, cropY, mouseX - cropX, mouseY - cropY);
   }
+  if (showHists) {
+    background(0);
+    Hist_draw(img);
+  }
 }
 
 void keyPressed() {
@@ -91,44 +101,57 @@ void keyPressed() {
     cropY = mouseY;
   } else if (key == '2') {
     // Reset scale
+     
     scaleFactor = 1.0;
     windowResize(editedImg.width, editedImg.height);
   } else if (key == '3') {
     // Rotate 90° Clockwise
+     
     editedImg = rotateImage(editedImg, 90);
     windowResize(editedImg.width, editedImg.height);
   } else if (key == '4') {
     // Flip Horizontally
+     
     editedImg = flipImage(editedImg, true);
     windowResize(editedImg.width, editedImg.height);
   } else if (key == '5') {
     // Flip Vertically
+     
     editedImg = flipImage(editedImg, false);
     windowResize(editedImg.width, editedImg.height);
   } else if (key == '6') {
     // Scale Up
+     
     scaleFactor = min(scaleFactor * 1.1, maxScaleFactor);
   } else if (key == '7') {
     // Scale Down
+     
     scaleFactor = max(scaleFactor * 0.9, minScaleFactor);
   } else if (key == '8') {
+     
     isDrawing = !isDrawing; // Toggle drawing mode
   } else if (key == '9') {
+     
     drawingLayer.beginDraw();
     drawingLayer.clear(); // Clear the drawing layer
     drawingLayer.endDraw();
   } else if (key == 'd' || key == 'D') {
     // Revert to Original Image
+     showHists = false;
     editedImg = originalImg.copy();
     scaleFactor = 1.0;
     windowResize(editedImg.width, editedImg.height);
   }else if (key == 'r' || key == 'R') {
+     
     currentStrokeColor = color(255, 0, 0); // Red
   } else if (key == 'g' || key == 'G') {
+     
     currentStrokeColor = color(0, 255, 0); // Green
   } else if (key == 'b' || key == 'B') {
+     
     currentStrokeColor = color(0, 0, 255); // Blue
   } else if (key == '+') {
+     
     currentStrokeWeight += 2 ; // Red
   } else if (key == '-')  {
       if (currentStrokeWeight >= 3) {
@@ -149,16 +172,16 @@ void keyPressed() {
     println("Image saved as edited_image.jpg");
   } else if (key == 'w' || key == 'W') {
     editedImg = convertToGrayscale(editedImg);
-  } else if (key == 'c' || key == 'C') {
-    editedImg = originalImg;
-    windowResize(editedImg.width, editedImg.height);
-  }
-   if (key == 'H')  {
+  }  if (key == 'h' || key == 'H') {
     editedImg = histStretch(img);
-    windowResize(editedImg.width, editedImg.height); 
-  } else if (key == 'E') {
+    windowResize(editedImg.width, editedImg.height);
+  } else if (key == 'E' || key == 'e') {
       editedImg = histEqual(img);
-  }  
+  } else if (key == 'f' || key == 'F') {
+    showHists = true;
+    background(0);
+    Hist_draw(img);
+  } 
 }
 
 void mouseReleased() {
@@ -241,11 +264,6 @@ PImage convertToColor(PImage img) {
   return colorImg;
 }
 
-//Define arrays for red, green, and blue counts
-int[] rCounts = new int[256];  //bins for red histogram
-int[] gCounts = new int[256];  //bins for green histogram
-int[] bCounts = new int[256];  //bins for blue histogram
-
 void calcHists(PImage src){
  //this is code taught in class
   for(int i =0; i<rCounts.length; i++){
@@ -265,71 +283,71 @@ void calcHists(PImage src){
     }
 }
 
-PImage histStretch( PImage src){
+PImage histStretch(PImage src) {
   calcHists(src);
-  // initializing variables
-  PImage target = createImage(src.width, src.height, RGB);
+  PImage target = createImage(src.width, src.height, ARGB);
   target.loadPixels();
-  float rmin = 0, gmin = 0, bmin = 0, rmax =0, gmax = 0, bmax =0;
-  float rscale = 0, gscale = 0, bscale = 0;
- // finding minimum color values
-  for(int i = 0; i<rCounts.length; i++){
-    if (rCounts[i] >0){
-       rmin = i;
-       break;
+
+  float rmin = 0, gmin = 0, bmin = 0, rmax = 0, gmax = 0, bmax = 0;
+  float rscale = 1, gscale = 1, bscale = 1;
+
+  // Find min values
+  for (int i = 0; i < 256; i++) {
+    if (rCounts[i] > 0) {
+      rmin = i;
+      break;
     }
   }
-  for(int i = 0; i<gCounts.length; i++){
-    if (gCounts[i] >0){
-       gmin = i;
-       break;
+  for (int i = 0; i < 256; i++) {
+    if (gCounts[i] > 0) {
+      gmin = i;
+      break;
     }
   }
-  for(int i = 0; i<bCounts.length; i++){
-    if (bCounts[i] >0){
-       bmin = i;
-       break;
+  for (int i = 0; i < 256; i++) {
+    if (bCounts[i] > 0) {
+      bmin = i;
+      break;
     }
   }
- 
- /*
- now same process for highest bin
-*/
- for(int i =rCounts.length-1;i>=0; i--){
-   if(rCounts[i] >0){
-     rmax = i;
-     break;
-   }
- }
- for(int i =gCounts.length-1;i>=0; i--){
-   if(gCounts[i] >0){
-     gmax = i;
-     break;
-   }
- }
- for(int i =bCounts.length-1;i>=0; i--){
-   if(bCounts[i] >0){
-     bmax = i;
-     break;
-   }
- }
- // finding ratio between max color value possible and max values actually found.
- if (rmax>rmin) {rscale = 255/(rmax-rmin);}
- else rscale = 1;
- if (gmax>gmin) {gscale = 255/(gmax-gmin);}
- else gscale = 1;
- if (bmax>bmin) {bscale = 255/(bmax-bmin);}
- else bscale = 1;
- // multiplying colors by previous ratio
- for (int y = 0; y < src.height; y++) {
+
+  // Find max values
+  for (int i = 255; i >= 0; i--) {
+    if (rCounts[i] > 0) {
+      rmax = i;
+      break;
+    }
+  }
+  for (int i = 255; i >= 0; i--) {
+    if (gCounts[i] > 0) {
+      gmax = i;
+      break;
+    }
+  }
+  for (int i = 255; i >= 0; i--) {
+    if (bCounts[i] > 0) {
+      bmax = i;
+      break;
+    }
+  }
+
+  // Compute scales
+  if (rmax > rmin) rscale = 255.0 / (rmax - rmin);
+  if (gmax > gmin) gscale = 255.0 / (gmax - gmin);
+  if (bmax > bmin) bscale = 255.0 / (bmax - bmin);
+
+  // Apply stretching
+  for (int y = 0; y < src.height; y++) {
     for (int x = 0; x < src.width; x++) {
       color c = src.get(x, y);
-      int r = constrain((int)((red(c)-rmin) * rscale), 0, 255);
-      int g = constrain((int)((green(c)-gmin) * gscale), 0, 255);
-      int b = constrain((int)((blue(c)-bmin) * bscale), 0, 255);
-      target.pixels[y* src.width + x] = color(r,g,b);
+      int r = constrain((int)((red(c) - rmin) * rscale), 0, 255);
+      int g = constrain((int)((green(c) - gmin) * gscale), 0, 255);
+      int b = constrain((int)((blue(c) - bmin) * bscale), 0, 255);
+      int a = int(alpha(c));
+      target.pixels[y * src.width + x] = color(r, g, b, a);
     }
   }
+
   target.updatePixels();
   return target;
 }
@@ -386,3 +404,41 @@ PImage histEqual(PImage src) {
   target.updatePixels();
   return target;
 }
+
+//calculates the histogram
+void Hist_calc(PImage im){
+   // hist initialization
+  for (int i = 0; i < 256; i++) {
+    rCounts[i] = 0;
+    gCounts[i] = 0;
+    bCounts[i] = 0;
+  }
+    // get histogram for every channel
+  for (int i = 0; i < im.pixels.length; i++) {
+    color c = im.pixels[i];
+    rCounts[int(red(c))]++;
+    gCounts[int(green(c))]++;
+    bCounts[int(blue(c))]++;
+  }
+}
+//draws the histogram
+void Hist_draw (PImage img5) {
+  if (img5 == null) img5 = img;
+
+  Hist_calc(img5);  
+  
+  Hist_draw(rCounts, color(255, 0, 0), posR); // red histogram
+  
+  Hist_draw(gCounts, color(0, 255, 0), posG); // green histogram
+  
+  Hist_draw(bCounts, color(0, 0, 255), posB); // blue hisotgarm
+}
+
+void Hist_draw(int[] counts, color color1, int x_pos) {
+  stroke(color1);
+  for (int i = 0; i < 256; i++) {
+    // scaling
+    line(x_pos + i, height, x_pos + i, height - counts[i] / 100);
+  }
+}
+  
