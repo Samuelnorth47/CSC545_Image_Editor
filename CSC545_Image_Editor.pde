@@ -10,6 +10,7 @@ float scaleFactor = 1.0; // Initial scale factor
 final float minScaleFactor = 0.1;
 final float maxScaleFactor = 5.0;
 String filename = "test.jpg";
+String filename2 = "ColoredSquares.jpg";
 color currentStrokeColor = color(0); // Default to black
 int currentStrokeWeight = 2; 
 boolean showHists = false;
@@ -18,6 +19,9 @@ int[] rCounts = new int[256];  //bins for red histogram
 int[] gCounts = new int[256];  //bins for green histogram
 int[] bCounts = new int[256];  //bins for blue histogram
 int posR = 10, posG = 275, posB = 541; //Left edges of the color histograms in the canvas
+int ncolors = 128;
+color[] colorTable = new color[ncolors];
+
 
 void setup() {
   size(800, 600);
@@ -34,6 +38,12 @@ void setup() {
   drawingLayer.beginDraw();
   drawingLayer.clear(); // Ensure the drawing layer is transparent
   drawingLayer.endDraw();
+  
+  int nc = ncolors;
+  String paletteName = "palettes" + File.separator + filename2.substring(0, filename2.length()-4) + 
+              "_" + str(nc) + ".bmp";
+  readPalette(paletteName, colorTable);
+  
   println("Controls:");
   println("1: Start Crop");
   println("2: Reset Scale");
@@ -56,6 +66,17 @@ void setup() {
   println("h: Stretches images Histogram");
   println("e: Equalizes images Histogram");
   println("f: Display Histogram");
+  println("i: Dither the Image");
+}
+
+void readPalette(String paletteName, color[] palette) {
+  //Load the palette into the color table; don't change this function
+  //For convenience, the palette is stored as pixels in an image
+  PImage paletteImage = loadImage(paletteName);
+  paletteImage.loadPixels();
+  for (int i = 0; i < palette.length; i++) {
+    palette[i] = paletteImage.pixels[i];
+  }
 }
 
 void draw() {
@@ -182,6 +203,9 @@ void keyPressed() {
     background(0);
     Hist_draw(img);
   } 
+  else if (key == 'i' || key == 'I') {
+    dither(img, colorTable);
+  }
 }
 
 void mouseReleased() {
@@ -441,4 +465,99 @@ void Hist_draw(int[] counts, color color1, int x_pos) {
     line(x_pos + i, height, x_pos + i, height - counts[i] / 100);
   }
 }
+
+float cdist(color c1, color c2) {
+  //Returns the distance between c1 and c2; don't change this function
+  float r1 = red(c1), r2 = red(c2);
+  float g1 = green(c1), g2 = green(c2);
+  float b1 = blue(c1), b2 = blue(c2);
+  float d = sqrt(sq(r1-r2) + sq(g1-g2) + sq(b1-b2));
+  return d;
+} 
+
+void dither(PImage img, color[] palette) {
+  //Leaves one row at bottom and one column on either side undithered
+  float distance, r, g, b, rdiff, gdiff, bdiff;
+  color p;
+  img.loadPixels();
   
+  for (int y = 0; y < img.height - 1; y++) {
+    for (int x = 1; x < img.width - 1; x++) {
+      int pixel = x + y * img.width;
+      color pixelColor = img.pixels[pixel];
+      
+      float minDistance = 500; // Bigger than any color distance
+      int closestIndex = 0;
+      
+      for (int i = 0; i < palette.length; i++) {
+        distance = cdist(pixelColor, palette[i]);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = i;
+        }
+      }
+      
+      p = palette[closestIndex];
+      img.pixels[pixel] = p;
+      
+      rdiff = red(pixelColor) - red(p);
+      gdiff = green(pixelColor) - green(p);
+      bdiff = blue(pixelColor) - blue(p);
+      
+      int rightIndex = (x + 1) + y * img.width;
+      color clr = img.pixels[rightIndex];
+      r = red(clr);
+      g = green(clr);
+      b = blue(clr);
+      
+      r = r + rdiff * 7.0/16.0;
+      g = g + gdiff * 7.0/16.0;
+      b = b + bdiff * 7.0/16.0;
+      
+      // Update the pixel
+      img.pixels[rightIndex] = color(r, g, b);
+      
+      int bottomLeftIndex = (x - 1) + (y + 1) * img.width;
+      clr = img.pixels[bottomLeftIndex];
+      r = red(clr);
+      g = green(clr);
+      b = blue(clr);
+      
+      r = r + rdiff * 3.0/16.0;
+      g = g + gdiff * 3.0/16.0;
+      b = b + bdiff * 3.0/16.0;
+      
+      // Update the pixel
+      img.pixels[bottomLeftIndex] = color(r, g, b);
+      
+      int bottomIndex = x + (y + 1) * img.width;
+      clr = img.pixels[bottomIndex];
+      r = red(clr);
+      g = green(clr);
+      b = blue(clr);
+      
+      r = r + rdiff * 5.0/16.0;
+      g = g + gdiff * 5.0/16.0;
+      b = b + bdiff * 5.0/16.0;
+      
+      // Update the pixel
+      img.pixels[bottomIndex] = color(r, g, b);
+      
+      int bottomRightIndex = (x + 1) + (y + 1) * img.width;
+      clr = img.pixels[bottomRightIndex];
+      r = red(clr);
+      g = green(clr);
+      b = blue(clr);
+      
+      r = r + rdiff * 1.0/16.0;
+      g = g + gdiff * 1.0/16.0;
+      b = b + bdiff * 1.0/16.0;
+      
+      // Update the pixel
+      img.pixels[bottomRightIndex] = color(r, g, b);
+    }
+  }
+  
+  img.updatePixels();
+}
